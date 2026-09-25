@@ -14,10 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - name: Qt runtime for the offscreen splash renderer
+      - name: Tools the skills' scripts use
         run: |
           sudo apt-get update -q
-          sudo apt-get install -y -q libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3
+          # Qt runtime for the offscreen splash renderer; bubblewrap for the maintainer-script sandbox;
+          # apt-utils (apt-ftparchive) and gnupg for building and verifying a signed APT repository
+          sudo apt-get install -y -q libegl1 libgl1 libxkbcommon0 libfontconfig1 libdbus-1-3 \
+            bubblewrap apt-utils gnupg
           python3 -m pip install --quiet PyQt6
       - name: Tests
         env:

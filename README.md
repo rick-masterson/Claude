@@ -23,20 +23,37 @@ that any participant can use it:
 | Plugin | Skills | What it adds |
 |---|---|---|
 | [`desktop-theming`](plugins/desktop-theming) | `plymouth-theme`, `kde-splash` | Linux boot and login splashes, which fail *silently*: a Plymouth script checker built from Plymouth's source, and an offscreen KSplash renderer that reports QML errors and saves a screenshot |
+| [`debian-packaging`](plugins/debian-packaging) | `debian-package`, `apt-repo-github` | `.deb` packages and your own signed APT repo on GitHub Pages: a `.deb` checker (0 errors on 200 real Debian packages), a bubblewrap sandbox that runs maintainer scripts with no root and a read-only system, an end-to-end repository verifier, and build/CI templates |
+| [`agent-workflow`](plugins/agent-workflow) | `multi-session-git` | Several AI sessions in one repository: a pre-commit preflight that separates your changes from everyone else's and spots live edits, plus worktree practice |
+
+Always-on cost is about 110–180 tokens per skill (Claude Code `plugin details`). The full instructions load only
+when a task needs them.
 
 ## Install (Claude Code)
 
 ```
 /plugin marketplace add rick-masterson/Claude
 /plugin install desktop-theming@rick-masterson
+/plugin install debian-packaging@rick-masterson
+/plugin install agent-workflow@rick-masterson
 ```
 
 ## Use without Claude Code
 
+Every tool takes `--json` and uses exit codes 0 (ok), 1 (problems found) and 2 (bad usage).
+
 ```bash
-python3 plugins/desktop-theming/skills/plymouth-theme/scripts/check_plymouth_theme.py /usr/share/plymouth/themes/<name> --json
-python3 plugins/desktop-theming/skills/kde-splash/scripts/render_splash.py <look-and-feel-dir> --out splash.png --json
+S=plugins/desktop-theming/skills; D=plugins/debian-packaging/skills; W=plugins/agent-workflow/skills
+python3 $S/plymouth-theme/scripts/check_plymouth_theme.py /usr/share/plymouth/themes/<name>
+python3 $S/kde-splash/scripts/render_splash.py <look-and-feel-dir> --out splash.png
+python3 $D/debian-package/scripts/check_deb.py pkg.deb
+python3 $D/debian-package/scripts/sandbox_maintscripts.py pkg.deb --seed /etc/motd
+python3 $D/apt-repo-github/scripts/verify_apt_repo.py https://OWNER.github.io/REPO --keyring key.gpg --apt
+python3 $W/multi-session-git/scripts/git_preflight.py --mine path/you/changed
 ```
+
+Found real defects on first use: the Release file of an APT repo listing itself, and a boot theme that
+registered itself as the system default on install.
 
 ## Rules for adding a skill
 

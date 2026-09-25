@@ -9,6 +9,16 @@
       "name": "desktop-theming",
       "source": "./plugins/desktop-theming",
       "description": "Plymouth boot splashes and KDE Plasma login splashes: verified API facts, a static checker and an offscreen renderer."
+    },
+    {
+      "name": "debian-packaging",
+      "source": "./plugins/debian-packaging",
+      "description": "Build .deb packages and your own signed APT repo on GitHub: a .deb checker, a maintainer-script sandbox and an APT repository verifier."
+    },
+    {
+      "name": "agent-workflow",
+      "source": "./plugins/agent-workflow",
+      "description": "Several AI sessions in one repository: pre-commit preflight and worktree practice."
     }
   ]
 }

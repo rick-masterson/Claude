@@ -1,0 +1,10 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "agent-workflow",
+  "version": "0.1.0",
+  "description": "Working safely when several AI sessions (or people) share one repository: a pre-commit check that separates your changes from everyone else's, and worktree practice.",
+  "author": { "name": "Rick Masterson" },
+  "repository": "https://github.com/rick-masterson/Claude",
+  "license": "GPL-2.0-only",
+  "keywords": ["git", "worktree", "multi-agent", "collaboration", "commit-safety"]
+}

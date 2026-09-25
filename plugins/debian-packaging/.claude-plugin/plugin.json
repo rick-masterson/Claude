@@ -1,0 +1,10 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "debian-packaging",
+  "version": "0.1.0",
+  "description": "Build .deb packages and publish your own signed APT repository from GitHub, and verify both: a .deb checker, a bubblewrap sandbox that runs maintainer scripts without root, and an end-to-end APT repository verifier.",
+  "author": { "name": "Rick Masterson" },
+  "repository": "https://github.com/rick-masterson/Claude",
+  "license": "GPL-2.0-only",
+  "keywords": ["debian", "deb", "apt", "dpkg", "packaging", "github-pages", "maintainer-scripts"]
+}
