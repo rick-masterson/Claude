@@ -1,0 +1,12 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "desktop-theming",
+  "version": "0.1.0",
+  "description": "Linux desktop theming that fails silently: Plymouth boot splashes and KDE Plasma login splashes. Ships checkers and an offscreen renderer that any agent or CI can run.",
+  "author": {
+    "name": "Rick Masterson"
+  },
+  "repository": "https://github.com/rick-masterson/Claude",
+  "license": "GPL-2.0-only",
+  "keywords": ["plymouth", "kde", "plasma", "ksplash", "boot-splash", "debian", "theming"]
+}

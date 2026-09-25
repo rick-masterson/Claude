@@ -1,0 +1,21 @@
+# Uses only functions the script plugin provides.
+bar.source = Image("dot.png");
+bar.sprite = Sprite();
+message_sprite = Sprite();
+state.tick = 0;
+fun progress_cb(duration, progress) {
+    if (progress > 0) bar.sprite.SetImage(bar.source.Scale(100 * progress, 10));
+}
+fun refresh_cb() {
+    state.tick++;
+    bar.sprite.SetOpacity(Math.Abs(Math.Sin(state.tick / 50)));
+}
+fun hide_message_cb(text) {
+    message_sprite = Sprite();   # replaces the GLOBAL sprite: bare names resolve to globals
+    message_sprite.SetPosition(10, 10, 100);
+}
+Plymouth.SetBootProgressFunction(progress_cb);
+Plymouth.SetRefreshFunction(refresh_cb);
+Plymouth.SetMessageFunction(hide_message_cb);   # old alias, still valid
+Plymouth.SetHideMessageFunction(hide_message_cb);
+logo = Image("special://logo");

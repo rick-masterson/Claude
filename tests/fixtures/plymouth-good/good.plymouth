@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Good
+Description=Fixture that uses only real API
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/plymouth-good
+ScriptFile=/usr/share/plymouth/themes/plymouth-good/good.script

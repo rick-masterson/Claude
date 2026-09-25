@@ -1,0 +1,14 @@
+bg = Image("background.png");
+bar_sprite = Sprite(Image("dot.png"));
+fun progress_cb(duration, progress) {
+    bar_sprite.SetScale(progress, 1);
+}
+fun refresh_cb() {
+    t = Plymouth.GetTime();
+}
+fun password_cb(prompt, bullets) {
+    prompt_sprite = Sprite(Image.Text(prompt, 1, 1, 1));
+}
+Plymouth.SetBootProgressFunction(progress_cb);
+Plymouth.SetRefreshFunction(refresh_cb);
+Plymouth.SetDisplayPasswordFunction(password_cb);

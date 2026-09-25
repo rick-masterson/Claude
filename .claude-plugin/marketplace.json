@@ -1,0 +1,14 @@
+{
+  "name": "rick-masterson",
+  "description": "Skills that make AI coding agents verify their work against the real system: checkers, renderers and hard-won facts, runnable by Claude, ORAC or any other agent.",
+  "owner": {
+    "name": "Rick Masterson"
+  },
+  "plugins": [
+    {
+      "name": "desktop-theming",
+      "source": "./plugins/desktop-theming",
+      "description": "Plymouth boot splashes and KDE Plasma login splashes: verified API facts, a static checker and an offscreen renderer."
+    }
+  ]
+}

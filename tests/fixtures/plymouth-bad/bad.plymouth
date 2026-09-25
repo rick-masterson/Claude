@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=Bad
+Description=Fixture with one of each defect
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/plymouth-bad
+ScriptFile=/usr/share/plymouth/themes/plymouth-bad/missing.script
