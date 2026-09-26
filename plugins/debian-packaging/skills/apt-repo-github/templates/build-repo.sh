@@ -16,8 +16,9 @@ suite=stable
 
 rm -rf "$out/dists" "$out/pool"
 mkdir -p "$out/pool/main"
+# Package builds never see the signing key: a build script, or anything it runs, could otherwise copy it.
 for build in "$root"/packages/*/build.sh; do
-    sh "$build" "$out/pool/main"
+    (unset APT_SIGNING_KEY; sh "$build" "$out/pool/main")
 done
 
 cd "$out"

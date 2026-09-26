@@ -27,8 +27,10 @@ python3 scripts/sandbox_maintscripts.py PACKAGE.deb [--lifecycle install,upgrade
     [--seed /etc/motd] [--seed /usr/share/foo/motd=/etc/motd] [--old-version 1.0-1] [--json] [--keep]
 ```
 
-- It runs each script under **bubblewrap**: the real filesystem is read-only, `/home`, `/root` and `/tmp` are empty,
-  there is no network, and `DPKG_ROOT` points at a scratch root.
+- It runs each script under **bubblewrap**: the real filesystem is read-only, `/home`, `/root`, `/tmp` and `/run`
+  are empty, there is no network and no route to host services (D-Bus, systemd, `docker.sock`), `/etc/shadow` and
+  the SSH host keys read as empty, all capabilities are dropped, and `DPKG_ROOT` points at a scratch root.
+- Run it as a **normal user**, never with sudo: the scripts can still read what the calling user can read.
 - System tools (`update-alternatives`, `systemctl`, `update-initramfs`, `adduser`, ...) are stubs that only record
   the call.
 - It reports every file created, changed or deleted, every tool the scripts *would* run, and all their output.
