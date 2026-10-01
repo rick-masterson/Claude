@@ -129,9 +129,15 @@ def bwrap_works():
     return bool(shutil.which("bwrap")) and run("bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "true").returncode == 0
 
 
-@unittest.skipUnless(bwrap_works(), "bubblewrap is missing or cannot create namespaces here")
+BWRAP_OK = bwrap_works()
+# CI sets REQUIRE_SANDBOX=1 so a runner that cannot create namespaces fails these tests instead of skipping them.
+SANDBOX_REQUIRED = os.environ.get("REQUIRE_SANDBOX") == "1"
+
+
+@unittest.skipUnless(BWRAP_OK or SANDBOX_REQUIRED, "bubblewrap is missing or cannot create namespaces here")
 class Sandbox(unittest.TestCase):
     def setUp(self):
+        self.assertTrue(BWRAP_OK, "REQUIRE_SANDBOX=1 but bubblewrap cannot create namespaces here")
         self.tmp = Path(tempfile.mkdtemp())
 
     def tearDown(self):
@@ -161,6 +167,38 @@ class Sandbox(unittest.TestCase):
         _, steps = self.steps(build_deb(self.tmp, postinst=peek), "--lifecycle", "install")
         self.assertEqual(next(s for s in steps if s["step"].startswith("postinst"))["stdout"], "")
 
+    def postinst(self, script):
+        _, steps = self.steps(build_deb(self.tmp, postinst="#!/bin/sh\n" + script), "--lifecycle", "install")
+        return next(s for s in steps if s["step"].startswith("postinst"))
+
+    def test_run_is_empty_so_host_sockets_are_unreachable(self):
+        self.assertEqual(self.postinst("ls -A /run\n")["stdout"], "")
+
+    def test_a_host_socket_under_run_cannot_be_reached(self):
+        import socket
+        where = next((d for d in (os.environ.get("XDG_RUNTIME_DIR"), "/run") if d and d.startswith("/run")
+                      and os.access(d, os.W_OK)), None)
+        if where is None:
+            self.skipTest("no writable directory under /run to plant a socket in")
+        path = Path(where) / f"sandbox-test-{os.getpid()}.sock"
+        srv = socket.socket(socket.AF_UNIX)
+        try:
+            srv.bind(str(path)); srv.listen(1)
+            probe = (f"python3 -c \"import socket; socket.socket(socket.AF_UNIX).connect('{path}')\" "
+                     "&& echo REACHED || echo blocked\n")
+            self.assertEqual(self.postinst(probe)["stdout"], "blocked")
+        finally:
+            srv.close(); path.unlink(missing_ok=True)
+
+    def test_capabilities_are_dropped_so_root_cannot_remount_the_real_system(self):
+        post = self.postinst("grep CapEff /proc/self/status\n"
+                             "mount -o remount,bind,rw / 2>/dev/null && echo REMOUNTED || echo ro\n")
+        self.assertEqual(post["stdout"].split(), ["CapEff:", "0000000000000000", "ro"])
+
+    @unittest.skipUnless(Path("/etc/shadow").is_file(), "no /etc/shadow here")
+    def test_shadow_reads_as_empty(self):
+        self.assertEqual(self.postinst("wc -c < /etc/shadow\n")["stdout"], "0")
+
 
 def have(*tools):
     return all(shutil.which(t) for t in tools)
@@ -189,7 +227,9 @@ class AptRepo(unittest.TestCase):
         debs = cls.tmp / "debs"
         debs.mkdir()
         cls.deb = build_deb(debs, postinst=GOOD_POSTINST)
-        (repo / "packages" / "demo" / "build.sh").write_text(f'#!/bin/sh\ncp "{cls.deb}" "$1/"\n')
+        # The build script records whether it could see the signing key; it must not.
+        (repo / "packages" / "demo" / "build.sh").write_text(
+            f'#!/bin/sh\ncp "{cls.deb}" "$1/"\nprintf %s "${{APT_SIGNING_KEY:+LEAKED}}" > "{cls.tmp}/key-seen"\n')
         r = subprocess.run(["sh", str(repo / "scripts" / "build-repo.sh"), str(cls.tmp / "public")],
                            capture_output=True, text=True, env={**os.environ, "APT_SIGNING_KEY": key})
         assert r.returncode == 0, r.stderr
@@ -209,6 +249,14 @@ class AptRepo(unittest.TestCase):
         self.assertEqual(code, 0, [c for c in rep["checks"] if not c["ok"]])
         release = (self.public / "dists" / "stable" / "Release").read_text()
         self.assertNotIn(" Release\n", release, "Release must not list itself")
+
+    def test_package_builds_never_see_the_signing_key(self):
+        self.assertEqual((self.tmp / "key-seen").read_text(), "")
+
+    def test_keyring_over_plain_http_is_refused(self):
+        r = run(sys.executable, VERIFY, self.public, "--keyring", "http://127.0.0.1:9/test-archive-keyring.gpg")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("plain http", r.stderr)
 
     def test_wrong_key_fails_the_signature(self):
         other = self.tmp / "other-gnupg"

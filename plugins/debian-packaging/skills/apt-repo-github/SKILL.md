@@ -21,7 +21,8 @@ It checks, in order, and names the link that broke:
 4. with `--apt`, a real `apt-get update` in a throwaway apt state.
 
 Pass a keyring you verified **by fingerprint**. One fetched from the same site as the repo proves nothing on its
-own. It works on a local directory too, so check before you push. Exit codes: 0 ok, 1 failure, 2 unreachable.
+own, and one fetched over plain `http://` is refused. It works on a local directory too, so check before you push.
+Exit codes: 0 ok, 1 failure, 2 unreachable or refused.
 
 ## 2. Set one up (templates in `templates/`)
 

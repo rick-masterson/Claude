@@ -8,9 +8,11 @@ What happens:
   * a scratch root is made; --seed copies real host files into it first (e.g. /etc/motd), so scripts that react
     to existing state can be exercised
   * the package payload is unpacked into the scratch root, as dpkg would
-  * each script runs under bubblewrap: the real filesystem is READ-ONLY, /home /root /tmp are empty tmpfs, there
-    is no network, and DPKG_ROOT points at the scratch root. System tools a script would call
-    (update-alternatives, systemctl, update-initramfs, ...) are replaced by stubs that only log the call
+  * each script runs under bubblewrap: the real filesystem is READ-ONLY, /home /root /tmp /run are empty tmpfs,
+    there is no network and no way to reach host services (D-Bus, systemd, docker.sock), /etc/shadow and the SSH
+    host keys read as empty, all capabilities are dropped, and DPKG_ROOT points at the scratch root. Run it as a
+    normal user: unix sockets outside /run, and files that user can read, stay reachable. System tools a script
+    would call (update-alternatives, systemctl, update-initramfs, ...) are replaced by stubs that only log the call
   * between prerm and postrm the payload is removed from the scratch root, as dpkg would
 
 Report: exit code and output of every script, every stubbed call, and every file created, changed or deleted in
@@ -24,6 +26,7 @@ convention) act on the scratch root, and those that don't hit the read-only real
 from __future__ import annotations
 
 import argparse
+import glob
 import hashlib
 import json
 import os
@@ -85,12 +88,33 @@ def make_stubs(stub_dir: Path, log: Path) -> None:
         s.chmod(0o755)
 
 
+def hide_host_services(empty: Path) -> list[str]:
+    """bwrap arguments that cut a script off from the host's services and secrets.
+
+    A read-only mount does not stop connect() on a unix socket, so /run (D-Bus, systemd, docker.sock, ...) would be
+    an escape route: the session bus alone can start a command outside the sandbox. Root-only secrets are replaced
+    by an empty file, since a sandbox run as root can still read files root owns."""
+    args = ["--tmpfs", "/run"]
+    for d in ("/var/run", "/var/snap"):  # /var/run is usually a symlink to /run; the LXD socket lives in /var/snap
+        if os.path.isdir(d) and not os.path.islink(d):
+            args += ["--tmpfs", d]
+    for f in ["/etc/shadow", "/etc/shadow-", "/etc/gshadow", "/etc/gshadow-", *glob.glob("/etc/ssh/ssh_host_*_key")]:
+        if os.path.isfile(f):
+            args += ["--ro-bind", str(empty), f]
+    return args
+
+
 def run_script(script: Path, args: list[str], scratch: Path, stubs: Path, log: Path, work: Path) -> dict:
     env_path = f"{stubs}:/usr/sbin:/usr/bin:/sbin:/bin"
+    empty = work / "empty"
+    empty.touch()
     cmd = ["bwrap", "--ro-bind", "/", "/", "--dev", "/dev", "--proc", "/proc",
-           "--tmpfs", "/home", "--tmpfs", "/root", "--tmpfs", "/tmp",
+           "--tmpfs", "/home", "--tmpfs", "/root", "--tmpfs", "/tmp", *hide_host_services(empty),
            "--bind", str(work), str(work),  # scratch root, stubs and log live here, re-exposed read-write
-           "--unshare-net", "--unshare-pid", "--die-with-parent",
+           # Run as root, bwrap keeps its capabilities, and CAP_SYS_ADMIN can remount / read-write: drop them all.
+           # --new-session stops a script pushing keystrokes into the calling terminal (TIOCSTI).
+           "--cap-drop", "ALL", "--new-session",
+           "--unshare-net", "--unshare-pid", "--unshare-ipc", "--unshare-uts", "--die-with-parent",
            "--clearenv", "--setenv", "PATH", env_path, "--setenv", "DPKG_ROOT", str(scratch),
            "--setenv", "HOME", "/home/sandbox", "--setenv", "DPKG_MAINTSCRIPT_NAME", script.name,
            "--setenv", "DPKG_MAINTSCRIPT_PACKAGE", "sandbox", "--setenv", "LC_ALL", "C.UTF-8",
@@ -122,6 +146,9 @@ def main(argv=None) -> int:
     if unknown := [s for s in stages if s not in LIFECYCLES]:
         print(f"unknown lifecycle stage(s): {unknown}", file=sys.stderr); return 2
 
+    if os.geteuid() == 0:
+        print("warning: running as root. Capabilities are dropped, but the scripts can still read files root owns "
+              "and reach any root-only socket outside /run. Run as a normal user.", file=sys.stderr)
     work = Path(tempfile.mkdtemp(prefix="maintsandbox-"))
     try:
         scratch, ctrl, payload = work / "root", work / "control", work / "payload"

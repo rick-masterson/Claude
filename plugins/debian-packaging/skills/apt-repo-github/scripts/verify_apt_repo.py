@@ -11,8 +11,9 @@ Checks, in order:
   4. with --apt: a real `apt-get update` against a throwaway apt state, using only this repo and this keyring,
      then lists the package versions apt now sees. This is what a user's machine will do.
 
---keyring may be a local path or a URL (e.g. BASE/orac-archive-keyring.gpg); prefer a copy you verified by
-fingerprint, because a keyring fetched from the same place as the repo proves nothing on its own.
+--keyring may be a local path or an https:// URL (e.g. BASE/orac-archive-keyring.gpg); prefer a copy you verified
+by fingerprint, because a keyring fetched from the same place as the repo proves nothing on its own. A plain
+http:// keyring is refused: it is the trust root, and anyone on the network path could swap it.
 Exit 0: all checks pass. 1: something fails. 2: bad usage or unreachable repository. Stdlib + gpgv (+ apt-get).
 """
 from __future__ import annotations
@@ -103,7 +104,10 @@ def main(argv=None) -> int:
     work = Path(tempfile.mkdtemp(prefix="aptverify-"))
     try:
         keyring = work / "keyring.gpg"
-        if re.match(r"^https?://", args.keyring):
+        if re.match(r"^http://", args.keyring, re.I):
+            print(f"{args.keyring}: refusing a keyring over plain http; use https:// or a local copy verified by "
+                  "fingerprint", file=sys.stderr); return 2
+        if re.match(r"^https://", args.keyring, re.I):
             data = Source(args.keyring.rsplit("/", 1)[0]).get(args.keyring.rsplit("/", 1)[1])
             if data is None:
                 print(f"keyring not found at {args.keyring}", file=sys.stderr); return 2
