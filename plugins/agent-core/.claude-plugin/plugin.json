@@ -1,0 +1,10 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "agent-core",
+  "version": "0.1.0",
+  "description": "Core skills for any AI work partner, portable across agents: audit third-party skills, write and validate portable skills, find secrets in code and git history, hand off work between sessions or models, verify before claiming done, debug systematically, research with citations, run destructive operations safely, and review code.",
+  "author": { "name": "Rick Masterson" },
+  "repository": "https://github.com/rick-masterson/Claude",
+  "license": "GPL-2.0-only",
+  "keywords": ["agent-skills", "security", "secrets", "handoff", "verification", "debugging", "research", "code-review", "portable"]
+}
