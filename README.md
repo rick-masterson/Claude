@@ -25,6 +25,7 @@ that any participant can use it:
 | [`desktop-theming`](plugins/desktop-theming) | `plymouth-theme`, `kde-splash` | Linux boot and login splashes, which fail *silently*: a Plymouth script checker built from Plymouth's source, and an offscreen KSplash renderer that reports QML errors and saves a screenshot |
 | [`debian-packaging`](plugins/debian-packaging) | `debian-package`, `apt-repo-github` | `.deb` packages and your own signed APT repo on GitHub Pages: a `.deb` checker (0 errors on 200 real Debian packages), a bubblewrap sandbox that runs maintainer scripts with no root and a read-only system, an end-to-end repository verifier, and build/CI templates |
 | [`agent-workflow`](plugins/agent-workflow) | `multi-session-git` | Several AI sessions in one repository: a pre-commit preflight that separates your changes from everyone else's and spots live edits, plus worktree practice |
+| [`agent-core`](plugins/agent-core) | `skill-audit`, `skill-authoring`, `secret-scan`, `session-handoff`, `verify-before-done`, `systematic-debugging`, `research-and-cite`, `destructive-ops`, `code-review` | Core habits for any AI work partner, written to work in any agent: a security audit for third-party skills (0 HIGH on 32 trusted skills, every rule tripped by a malicious fixture), a spec validator and catalog builder that hands skills to models without skill support, a secret scanner for files and git history, and a handoff file with a drift check so another session or model can resume |
 
 Always-on cost is about 110–180 tokens per skill (Claude Code `plugin details`). The full instructions load only
 when a task needs them.
@@ -36,6 +37,7 @@ when a task needs them.
 /plugin install desktop-theming@rick-masterson
 /plugin install debian-packaging@rick-masterson
 /plugin install agent-workflow@rick-masterson
+/plugin install agent-core@rick-masterson
 ```
 
 ## Use without Claude Code
@@ -50,6 +52,12 @@ python3 $D/debian-package/scripts/check_deb.py pkg.deb
 python3 $D/debian-package/scripts/sandbox_maintscripts.py pkg.deb --seed /etc/motd
 python3 $D/apt-repo-github/scripts/verify_apt_repo.py https://OWNER.github.io/REPO --keyring key.gpg --apt
 python3 $W/multi-session-git/scripts/git_preflight.py --mine path/you/changed
+C=plugins/agent-core/skills
+python3 $C/skill-audit/scripts/audit_skill.py path/to/downloaded-skill
+python3 $C/skill-authoring/scripts/validate_skill.py --all plugins
+python3 $C/skill-authoring/scripts/build_catalog.py plugins > SKILLS.md   # index for any model's system prompt
+python3 $C/secret-scan/scripts/find_secrets.py --history .
+python3 $C/session-handoff/scripts/handoff.py read
 ```
 
 Found real defects on first use: the Release file of an APT repo listing itself, and a boot theme that

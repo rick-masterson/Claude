@@ -19,6 +19,11 @@
       "name": "agent-workflow",
       "source": "./plugins/agent-workflow",
       "description": "Several AI sessions in one repository: pre-commit preflight and worktree practice."
+    },
+    {
+      "name": "agent-core",
+      "source": "./plugins/agent-core",
+      "description": "Portable core skills for any AI work partner: skill security audit, portable skill authoring and validation, secret scanning (files and git history), session handoff, verify-before-done, systematic debugging, research with citations, safe destructive operations, code review."
     }
   ]
 }
