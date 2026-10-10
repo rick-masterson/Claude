@@ -30,7 +30,8 @@ RULES = [
     ("remote-instructions", "high",
      r"\b(fetch|download|curl|wget|load|pull)\b[^\n]{0,60}(instructions?|config|prompt|rules)[^\n]{0,40}https?://",
      "tells the agent to load instructions or config from a URL at run time"),
-    ("pipe-to-shell", "high", r"(curl|wget)[^\n|]*\|\s*(ba|z|da)?sh\b", "downloads and pipes straight into a shell"),
+    ("pipe-to-shell", "warn", r"(curl|wget)[^\n|]*\|\s*(ba|z|da)?sh\b",
+     "downloads and pipes straight into a shell (common for vendor installers; check the URL)"),
     ("env-harvest", "warn",
      r"(os\.environ(\.copy\(\))?\s*\)|os\.environ\.items\(\)|printenv|\benv\s*\||process\.env\s*\)|"
      r"JSON\.stringify\(\s*process\.env)", "reads the whole environment (where API keys live)"),
@@ -51,8 +52,15 @@ RULES = [
      r"(ignore|disregard|override)\s+(all\s+|any\s+)?(previous|prior|above|system|user'?s?)\s+(instructions|rules|prompts?)",
      "classic prompt-injection phrasing"),
     ("conceal", "high",
+     r"((do not|don't|never)\s+(tell|inform|mention|show|reveal|let)\b[^\n]{0,40}\b(user|human|operator)\b[^\n]{0,60}"
+     r"\b(you (ran|did|executed|sent|installed|downloaded|uploaded|read|accessed)|this (skill|instruction|file|command|step)|"
+     r"these (instructions|commands|steps)|the (commands?|scripts?|data|files?) you)\b|"
+     r"\bwithout (telling|informing|notifying) the (user|human|operator)|"
+     r"\bkeep (this|it|these)[^\n]{0,20}(secret|hidden) from the (user|human))",
+     "asks the agent to hide its actions or these instructions from the user"),
+    ("withhold", "warn",
      r"(do not|don't|never)\s+(tell|inform|mention|show|reveal)[^\n]{0,30}(the\s+)?(user|human|operator)",
-     "asks the agent to hide actions from the user"),
+     "asks the agent not to tell the user something (usually UX advice; check what is withheld)"),
     ("dangerous-shell", "warn",
      r"(rm\s+-rf\s+[/~$]|chmod\s+(-R\s+)?777|sudo\s|mkfs|dd\s+if=|:\(\)\s*\{|git\s+push\s+(-f|--force))",
      "destructive or privileged command"),
@@ -68,9 +76,11 @@ RULES = [
 # Rules about what code does: in prose (docs) they are only worth a look; in scripts they are serious.
 CODE_RULES = {"pipe-to-shell", "secret-files", "exfil-endpoint", "obfuscated-exec", "dangerous-shell"}
 PROSE_SUFFIXES = {".md", ".txt"}
+CODE_SUFFIXES = {".py", ".sh", ".bash", ".js", ".mjs", ".ts", ".rb", ".pl", ".ps1", ""}
 RISKY_CMDS = {"sudo", "rm", "curl", "wget", "ssh", "scp", "bash", "sh", "zsh", "python", "python3", "node", "perl",
               "ruby", "eval", "git", "npx", "dd", "chmod", "chown"}
 
+RX = {rid: rx for rid, _, rx, _ in RULES}
 OPT_OUT = "audit-skill: " + "rule-definitions"  # split so this line is not itself the marker
 
 INVISIBLE = {"\u200b", "\u200c", "\u200d", "\u2060", "\ufeff", "\u00ad", "\u180e"}
@@ -102,10 +112,19 @@ def frontmatter_fields(fm):
     return fields
 
 
+def emoji_joiner(line, i):
+    """U+200D between two pictographs is an emoji sequence (family, flags), not hidden text."""
+    def pict(j):
+        return 0 <= j < len(line) and (unicodedata.category(line[j]) == "So" or ord(line[j]) >= 0x1F000
+                                       or line[j] == "\ufe0f")
+    return line[i] == "\u200d" and pict(i - 1) and pict(i + 1)
+
+
 def check_unicode(rel, text, out):
     for n, line in enumerate(text.splitlines(), 1):
-        bad = sorted({c for c in line if c in INVISIBLE or unicodedata.category(c) in ("Cf", "Co")
-                      or 0xE0000 <= ord(c) <= 0xE007F})
+        bad = sorted({c for i, c in enumerate(line)
+                      if (c in INVISIBLE or unicodedata.category(c) in ("Cf", "Co") or 0xE0000 <= ord(c) <= 0xE007F)
+                      and c != "\ufe0f" and not emoji_joiner(line, i)})
         if bad:
             names = ", ".join(f"U+{ord(c):04X}" for c in bad)
             out.append(finding("high", "invisible-unicode", rel, n, f"invisible or tag characters ({names})", line))
@@ -208,10 +227,13 @@ def audit(root):
                     sev = "warn"
                 if rule_file:
                     sev = "info"
+                if rid == "conceal" and m.group(0).lower().startswith("without") and \
+                        re.search(r"\b(don't|do not|never|avoid|must not)\b", line[:m.start()], re.I):
+                    continue  # "don't claim X without telling the user" is a rule for honesty, not concealment
                 if rid in ("ignore-instructions", "conceal") and re.search(r"[\"\u201c'`]\s*$", line[:m.start()]):
                     sev, msg = "warn", msg + " (quoted, probably an example)"
                 out.append(finding(sev, rid, rel, n, msg, line.strip()))
-        if not prose and not rule_file and re.search(RULES[2][2], text) and re.search(RULES[10][2], text, re.I):
+        if p.suffix.lower() in CODE_SUFFIXES and not rule_file and re.search(RX["env-harvest"], text) and re.search(RX["network-call"], text, re.I):
             out.append(finding("high", "env-exfil", rel, 0,
                                "reads the whole environment and makes network calls in the same file"))
         if re.search(r"[A-Za-z0-9+/]{200,}={0,2}", text):

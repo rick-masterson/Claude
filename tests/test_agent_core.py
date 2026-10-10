@@ -58,11 +58,12 @@ class AuditTest(unittest.TestCase):
             self.assertEqual(rc, 1)
             high = {f["rule"] for f in json.loads(out)["findings"] if f["severity"] == "high"}
             for rule in ("invisible-unicode", "ignore-instructions", "conceal", "remote-instructions",
-                         "pipe-to-shell", "secret-files", "obfuscated-exec", "exfil-endpoint", "env-exfil",
+                         "secret-files", "obfuscated-exec", "exfil-endpoint", "env-exfil",
                          "pre-approved-tools", "symlink"):
                 self.assertIn(rule, high)
             warn = {f["rule"] for f in json.loads(out)["findings"] if f["severity"] == "warn"}
             self.assertIn("description-instructions", warn)
+            self.assertIn("pipe-to-shell", warn)
 
     def test_this_repos_skills_have_no_high_findings(self):
         for skill in sorted(ROOT.glob("plugins/*/skills/*")):
