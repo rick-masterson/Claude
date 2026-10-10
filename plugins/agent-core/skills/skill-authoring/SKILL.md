@@ -32,6 +32,14 @@ python3 scripts/validate_skill.py path/to/skill            # or: --all path/to/f
 Errors are spec violations (exit 1); warnings are portability or quality issues. Then run the security
 scan from the `skill-audit` skill: your own skill should have no HIGH findings either.
 
+## Draft with several models at once
+
+Open `assets/skill-wizard.html` in a browser. Add models to its bench (Claude inside Claude or by API key,
+OpenAI, OpenRouter, Gemini, Ollama, LM Studio, any OpenAI-compatible server). Each step runs on every active
+model in parallel: compare the drafts, keep one, or let a judge model merge them; then every model reviews the
+finished file and the judge applies the fixes. It checks the result against the spec and for injection
+patterns, and exports SKILL.md. Keys stay in page memory unless you choose to remember them.
+
 ## Use skills with any model
 
 ```bash
