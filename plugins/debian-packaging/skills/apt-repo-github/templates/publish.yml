@@ -18,7 +18,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - name: Test
         run: python3 -m unittest discover -s tests -v
       - name: Build and sign the APT repository
@@ -28,7 +28,7 @@ jobs:
           test -n "$APT_SIGNING_KEY" || { echo "APT_SIGNING_KEY secret is missing"; exit 1; }
           sh scripts/build-repo.sh public
           [ -f site/index.html ] && cp site/index.html public/index.html || true
-      - uses: actions/upload-pages-artifact@v5
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: public
 
@@ -40,4 +40,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v5
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
